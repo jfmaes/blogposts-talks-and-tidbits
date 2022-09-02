@@ -25,10 +25,11 @@ BOOL  isX86(int pid)
 	}
 	
 	DWORD dwSize = sizeof(PROCESS_BASIC_INFORMATION);
-	HMODULE hNtdDll = LoadLibrary(L"ntdll.dll");
+	HMODULE hNtdDll = GetModuleHandle(L"ntdll.dll");
 	myNtQueryInformationProcess NtQueryInformationProcess = (myNtQueryInformationProcess)GetProcAddress(hNtdDll, "NtQueryInformationProcess");
 	status = NtQueryInformationProcess(hProcess, 0, &pbi, dwSize, NULL);
-	if (!status == S_OK)
+	//https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-erref/596a1078-e883-4972-9bbc-49e60bebca55
+	if (!status == 0x00000000)
 	{
 		printf("NtQueryInformationProcess failed\n");
 		return -1;
@@ -48,6 +49,7 @@ BOOL  isX86(int pid)
 	if (!success)
 	{
 		printf("ReadProcessMemory failed\n");
+		CloseHandle(hProcess);
 		return -1;
 	}
 	pNtHeaderAddr = RVA2VA(PVOID, pExeBaseAddr, ImageDosHeader.e_lfanew);
@@ -55,11 +57,12 @@ BOOL  isX86(int pid)
 	if (!success)
 	{
 		printf("ReadProcessMemory failed\n");
+		CloseHandle(hProcess);
 		return -1;
 	}
 
 	printf("Process Machine Type: 0x%x\n", ImageNtHeader.FileHeader.Machine);
-
+	CloseHandle(hProcess);
 	if (ImageNtHeader.FileHeader.Machine == IMAGE_FILE_MACHINE_I386)
 	{
 		return 1;
@@ -68,7 +71,7 @@ BOOL  isX86(int pid)
 	{
 		return 0;
 	}
-	return status;
+	
 }
 
 int main()
